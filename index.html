@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistente Financeiro</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#20312a;background:#f7faf8}
+h2{color:#176b45;margin-top:0}button{background:#176b45;color:white;border:0;border-radius:6px;padding:10px 14px;cursor:pointer}
+#status{margin-top:14px;padding:10px;background:#e8f3ed;border-radius:6px;white-space:pre-wrap}
+small{color:#52635a}
+</style>
+</head>
+<body>
+<h2>Assistente Financeiro</h2>
+<p>Primeiro, vamos verificar a conexão com o Excel.</p>
+<button id="check">Verificar conexão com o Excel</button>
+<div id="status">Aguardando verificação.</div>
+<p><small>Esta versão de teste lê apenas os nomes das tabelas e das colunas. Nenhum dado financeiro é enviado para fora do arquivo.</small></p>
+<script>
+Office.onReady(function(info){
+  document.getElementById("status").textContent =
+    info.host === Office.HostType.Excel ? "Excel conectado. Clique no botão para testar a leitura das tabelas." : "Abra este suplemento no Excel.";
+});
+document.getElementById("check").addEventListener("click", async function(){
+  const status=document.getElementById("status");
+  try{
+    await Excel.run(async function(context){
+      const tables=context.workbook.tables;
+      tables.load("items/name");
+      await context.sync();
+      const details=[];
+      for(const table of tables.items){
+        const columns=table.columns;
+        columns.load("items/name");
+        await context.sync();
+        details.push(table.name+": "+columns.items.map(c=>c.name).join(", "));
+      }
+      status.textContent=details.length ? "Conexão confirmada. Tabelas encontradas:\n"+details.join("\n") : "Conexão confirmada, mas nenhuma tabela foi encontrada.";
+    });
+  }catch(e){status.textContent="Não foi possível acessar o Excel: "+e.message;}
+});
+</script>
+</body>
+</html>

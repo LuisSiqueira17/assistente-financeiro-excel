@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:type="TaskPaneApp">
+ <Id>7d7d0f7e-4b5a-4d5c-9d42-6e2f8c5a1b31</Id>
+ <Version>1.0.0.0</Version>
+ <ProviderName>Assistente Financeiro</ProviderName>
+ <DefaultLocale>pt-BR</DefaultLocale>
+ <DisplayName DefaultValue="Assistente Financeiro"/>
+ <Description DefaultValue="Assistente financeiro integrado ao Excel."/>
+ <IconUrl DefaultValue="https://luissiqueira17.github.io/assistente-financeiro-excel/icon-32.png"/>
+ <HighResolutionIconUrl DefaultValue="https://luissiqueira17.github.io/assistente-financeiro-excel/icon-64.png"/>
+ <SupportUrl DefaultValue="https://github.com/LuisSiqueira17/assistente-financeiro-excel"/>
+ <AppDomains><AppDomain>https://luissiqueira17.github.io</AppDomain></AppDomains>
+ <Hosts><Host Name="Workbook"/></Hosts>
+ <DefaultSettings>
+  <SourceLocation DefaultValue="https://luissiqueira17.github.io/assistente-financeiro-excel/"/>
+ </DefaultSettings>
+ <Permissions>ReadDocument</Permissions>
+</OfficeApp>
