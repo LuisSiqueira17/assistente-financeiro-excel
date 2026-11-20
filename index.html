@@ -21,6 +21,7 @@ small{color:#52635a}
 <button id="check">Verificar conexão com o Excel</button>
 <button id="read">Ler amostra das tabelas</button>
 <button id="readFull">Ler tabelas completas</button>
+<button id="catalog">Catalogar todas as tabelas</button>
 
 <div id="status">Aguardando verificação.</div>
 
@@ -175,6 +176,43 @@ document.getElementById("readFull").addEventListener("click", async function(){
     });
   }catch(e){
     status.textContent="Não foi possível ler as tabelas completas: "+e.message;
+  }
+});
+
+document.getElementById("catalog").addEventListener("click", async function(){
+  const status=document.getElementById("status");
+  status.textContent="Catalogando todas as tabelas do arquivo...";
+
+  try{
+    await Excel.run(async function(context){
+      const tables=context.workbook.tables;
+      tables.load("items/name");
+      await context.sync();
+
+      for(const table of tables.items){
+        table.columns.load("items/name");
+        table.rows.load("count");
+      }
+
+      await context.sync();
+
+      const results=[];
+      results.push("CATÁLOGO DO ARQUIVO");
+      results.push("Total de tabelas: "+tables.items.length);
+
+      for(const table of tables.items){
+        results.push("\n=== "+table.name+" ===");
+        results.push("Registros: "+table.rows.count);
+        results.push(
+          "Colunas: "+
+          table.columns.items.map(c=>c.name).join(" | ")
+        );
+      }
+
+      status.textContent=results.join("\n");
+    });
+  }catch(e){
+    status.textContent="Erro ao catalogar tabelas: "+e.message;
   }
 });
 </script>
