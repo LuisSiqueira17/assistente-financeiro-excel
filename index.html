@@ -6,17 +6,74 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assistente Financeiro</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
 <style>
-body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#20312a;background:#f7faf8}
-h2{color:#176b45;margin-top:0}
-button{background:#176b45;color:white;border:0;border-radius:6px;padding:10px 14px;cursor:pointer;margin:5px 0}
-#status{margin-top:14px;padding:10px;background:#e8f3ed;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
-small{color:#52635a}
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  padding:20px;
+  color:#20312a;
+  background:#f7faf8
+}
+
+h2{
+  color:#176b45;
+  margin-top:0
+}
+
+button{
+  background:#176b45;
+  color:white;
+  border:0;
+  border-radius:6px;
+  padding:10px 14px;
+  cursor:pointer;
+  margin:5px 0
+}
+
+#status{
+  margin-top:14px;
+  padding:10px;
+  background:#e8f3ed;
+  border-radius:6px;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:12px
+}
+
+#question{
+  width:100%;
+  box-sizing:border-box;
+  padding:10px;
+  border:1px solid #b8c9bf;
+  border-radius:6px;
+  font-family:Arial;
+  font-size:14px;
+  resize:vertical
+}
+
+#answer{
+  margin-top:14px;
+  padding:12px;
+  background:#fff;
+  border:1px solid #dce7df;
+  border-radius:6px;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  min-height:50px
+}
+
+small{
+  color:#52635a
+}
 </style>
 </head>
+
 <body>
+
 <h2>Assistente Financeiro</h2>
-<p>Vamos testar a leitura dos dados do Excel.</p>
+
+<p>Consulte e analise suas informações financeiras.</p>
 
 <button id="check">Verificar conexão com o Excel</button>
 <button id="read">Ler amostra das tabelas</button>
@@ -25,11 +82,30 @@ small{color:#52635a}
 
 <div id="status">Aguardando verificação.</div>
 
-<p><small>
+<div style="margin-top:20px">
+  <h3>Converse com seu assistente</h3>
+
+  <textarea
+    id="question"
+    rows="4"
+    placeholder="Digite sua pergunta sobre suas finanças..."
+  ></textarea>
+
+  <button id="ask">Enviar pergunta</button>
+</div>
+
+<div id="answer">
+A resposta aparecerá aqui.
+</div>
+
+<p>
+<small>
 A leitura é feita localmente no Excel. Nenhum dado financeiro é enviado para fora do arquivo.
-</small></p>
+</small>
+</p>
 
 <script>
+
 Office.onReady(function(info){
   document.getElementById("status").textContent =
     info.host === Office.HostType.Excel
@@ -215,6 +291,23 @@ document.getElementById("catalog").addEventListener("click", async function(){
     status.textContent="Erro ao catalogar tabelas: "+e.message;
   }
 });
+
+document.getElementById("ask").addEventListener("click", function(){
+  const question=document.getElementById("question").value.trim();
+  const answer=document.getElementById("answer");
+
+  if(!question){
+    answer.textContent="Digite uma pergunta antes de enviar.";
+    return;
+  }
+
+  answer.textContent=
+    "Pergunta recebida:\n\n"+
+    question+
+    "\n\nA conexão com a inteligência artificial será implementada na próxima etapa.";
+});
+
 </script>
+
 </body>
 </html>
