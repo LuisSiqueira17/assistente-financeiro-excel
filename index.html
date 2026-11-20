@@ -17,10 +17,16 @@ small{color:#52635a}
 <body>
 <h2>Assistente Financeiro</h2>
 <p>Vamos testar a leitura dos dados do Excel.</p>
+
 <button id="check">Verificar conexão com o Excel</button>
 <button id="read">Ler amostra das tabelas</button>
+<button id="readFull">Ler tabelas completas</button>
+
 <div id="status">Aguardando verificação.</div>
-<p><small>Teste local: lê somente as três primeiras linhas das tabelas selecionadas. Nenhum dado financeiro é enviado para fora do arquivo.</small></p>
+
+<p><small>
+A leitura é feita localmente no Excel. Nenhum dado financeiro é enviado para fora do arquivo.
+</small></p>
 
 <script>
 Office.onReady(function(info){
@@ -32,6 +38,7 @@ Office.onReady(function(info){
 
 document.getElementById("check").addEventListener("click", async function(){
   const status=document.getElementById("status");
+
   try{
     await Excel.run(async function(context){
       const tables=context.workbook.tables;
@@ -39,13 +46,18 @@ document.getElementById("check").addEventListener("click", async function(){
       await context.sync();
 
       const details=[];
+
       for(const table of tables.items){
         table.columns.load("items/name");
       }
+
       await context.sync();
 
       for(const table of tables.items){
-        details.push(table.name+": "+table.columns.items.map(c=>c.name).join(", "));
+        details.push(
+          table.name+": "+
+          table.columns.items.map(c=>c.name).join(", ")
+        );
       }
 
       status.textContent="Conexão confirmada.\n\n"+details.join("\n");
@@ -87,6 +99,7 @@ document.getElementById("read").addEventListener("click", async function(){
           sampleRows-1,
           headers.length-1
         );
+
         sample.load("values");
         await context.sync();
 
@@ -104,6 +117,64 @@ document.getElementById("read").addEventListener("click", async function(){
     });
   }catch(e){
     status.textContent="Não foi possível ler os dados: "+e.message;
+  }
+});
+
+document.getElementById("readFull").addEventListener("click", async function(){
+  const status=document.getElementById("status");
+  status.textContent="Lendo todas as linhas das tabelas...";
+
+  try{
+    await Excel.run(async function(context){
+      const names=["tbLancamentos","tabela_contas"];
+      const results=[];
+
+      for(const name of names){
+        const table=context.workbook.tables.getItem(name);
+
+        table.columns.load("items/name");
+        table.rows.load("count");
+        await context.sync();
+
+        const headers=table.columns.items.map(c=>c.name);
+        const totalRows=table.rows.count;
+
+        results.push("\n=== "+name+" ===");
+        results.push("Total de linhas: "+totalRows);
+        results.push(headers.join(" | "));
+
+        if(totalRows===0){
+          results.push("Tabela sem registros.");
+          continue;
+        }
+
+        const body=table.getDataBodyRange();
+        const fullRange=body.getCell(0,0).getResizedRange(
+          totalRows-1,
+          headers.length-1
+        );
+
+        fullRange.load("values");
+        await context.sync();
+
+        results.push("Registros completos:");
+
+        for(let i=0;i<fullRange.values.length;i++){
+          const row=fullRange.values[i];
+
+          results.push(
+            (i+1)+": "+
+            row.map(value=>
+              value===null || value===undefined ? "" : String(value)
+            ).join(" | ")
+          );
+        }
+      }
+
+      status.textContent=results.join("\n");
+    });
+  }catch(e){
+    status.textContent="Não foi possível ler as tabelas completas: "+e.message;
   }
 });
 </script>
