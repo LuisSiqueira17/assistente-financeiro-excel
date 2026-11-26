@@ -166,6 +166,82 @@
     let lastQuestion = "";
     let lastAnswer = "";
 
+
+    // Converte datas seriais do Excel para dd/mm/aaaa.
+    // A conversão é aplicada somente às colunas de data conhecidas.
+    function formatExcelDate(value) {
+      let serial = value;
+
+      if (typeof serial === "string" && /^\d+(?:[.,]\d+)?$/.test(serial.trim())) {
+        serial = Number(serial.trim().replace(",", "."));
+      }
+
+      if (typeof serial !== "number" || !Number.isFinite(serial) ||
+          serial < 1 || serial > 2958465) {
+        return value;
+      }
+
+      const wholeDays = Math.floor(serial);
+      const milliseconds = Date.UTC(1899, 11, 30) + wholeDays * 86400000;
+      const date = new Date(milliseconds);
+
+      if (Number.isNaN(date.getTime())) return value;
+
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const year = date.getUTCFullYear();
+
+      return `${day}/${month}/${year}`;
+    }
+
+    function normalizeFinancialDates(headers, records) {
+      const normalizeHeader = (value) =>
+        String(value || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim()
+          .toLowerCase();
+
+      const dateIndexes = headers
+        .map((header, index) => {
+          const name = normalizeHeader(header);
+          return name === "data de operacao" ||
+                 name === "data de liquidacao" ? index : -1;
+        })
+        .filter(index => index >= 0);
+
+      return records.map(record => {
+        const copy = [...record];
+
+        for (const index of dateIndexes) {
+          copy[index] = formatExcelDate(copy[index]);
+        }
+
+        return copy;
+      });
+    }
+
+    // Escapa HTML e interpreta negrito Markdown com segurança.
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, (char) => {
+        const entities = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        };
+
+        return entities[char];
+      });
+    }
+
+    function renderMarkdown(text) {
+      return escapeHtml(text)
+        .replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
+        .replace(/__(.+?)__/gs, "<strong>$1</strong>");
+    }
+
     // Inicialização do suplemento
     Office.onReady((info) => {
       if (info.host === Office.HostType.Excel) {
@@ -280,7 +356,10 @@
           dadosFinanceiros = {
             tabelaLancamentos: {
               colunas: cabecalhosLancamentos.values[0],
-              registros: dadosLancamentos.values
+              registros: normalizeFinancialDates(
+                cabecalhosLancamentos.values[0],
+                dadosLancamentos.values
+              )
             },
 
             tabelaContas: {
@@ -382,7 +461,7 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
         const resposta = result.answer ||
           "O Gemini não retornou uma resposta.";
 
-        answerEl.textContent = resposta;
+        answerEl.innerHTML = renderMarkdown(resposta);
 
         // Guarda a pergunta e a resposta para o relatório
         if (result.answer && result.answer.trim()) {
@@ -416,23 +495,9 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
         timeStyle: "short"
       });
 
-      // Protege o conteúdo ao inserir texto no documento
-      function escapeHtml(text) {
-        return String(text).replace(/[&<>"']/g, (char) => {
-          const entities = {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#39;"
-          };
-
-          return entities[char];
-        });
-      }
-
+      // Converte a resposta Markdown em HTML seguro para o relatório.
       const perguntaSegura = escapeHtml(lastQuestion);
-      const respostaSegura = escapeHtml(lastAnswer);
+      const respostaSegura = renderMarkdown(lastAnswer);
       const dataSegura = escapeHtml(dataHora);
 
       const janelaRelatorio = window.open("", "_blank");
@@ -537,6 +602,11 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       text-align: left;
+    }
+
+    .answer strong {
+      color: #174a35;
+      font-weight: 700;
     }
 
     .footer {
