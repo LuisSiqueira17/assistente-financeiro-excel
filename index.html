@@ -88,10 +88,6 @@
       color: #666;
       line-height: 1.45;
     }
-
-    #sendBtn {
-      margin-top: 10px;
-    }
   </style>
 </head>
 
@@ -107,7 +103,7 @@
     <strong>Conexão com o Excel</strong>
 
     <p class="note">
-      Verifique a conexão e identifique as tabelas e colunas da pasta de trabalho.
+      Verifique a conexão e identifique as tabelas e colunas.
     </p>
 
     <button id="checkBtn" disabled>
@@ -123,12 +119,12 @@
     <strong>Conversa com o Gemini</strong>
 
     <p class="note">
-      Digite sua pergunta e receba uma resposta baseada nos lançamentos da planilha.
+      Faça perguntas sobre suas contas e movimentações financeiras.
     </p>
 
     <textarea
       id="question"
-      placeholder="Ex.: Qual foi o total de receitas e despesas?"
+      placeholder="Ex.: Qual é o saldo atual de cada conta?"
       disabled
     ></textarea>
 
@@ -139,10 +135,9 @@
     <div id="answer" role="status" aria-live="polite"></div>
 
     <p class="note">
-      Ao enviar uma pergunta, os dados da tabela tbLancamentos
-      serão enviados ao Gemini para análise. As demais tabelas
-      da pasta de trabalho não serão enviadas.
-      Utilize somente dados fictícios durante os testes.
+      O suplemento enviará ao Gemini os dados das tabelas
+      tbLancamentos e tabela_contas. Utilize apenas dados fictícios
+      durante os testes.
     </p>
   </section>
 
@@ -164,24 +159,21 @@
         excelReady = true;
 
         statusEl.textContent =
-          "Suplemento carregado no Excel. Você já pode verificar a conexão.";
+          "Suplemento carregado e conectado ao Excel.";
 
         checkBtn.disabled = false;
         questionEl.disabled = false;
         sendBtn.disabled = false;
-
       } else {
         statusEl.textContent =
-          "O painel abriu, mas não detectou o Excel como aplicativo hospedeiro.";
+          "O suplemento não detectou o Excel.";
       }
     });
 
-    // Verificação da conexão com o Excel
+    // Verificação das tabelas
     checkBtn.addEventListener("click", async () => {
       checkBtn.disabled = true;
-
-      statusEl.textContent =
-        "Lendo apenas os nomes das tabelas e das colunas…";
+      statusEl.textContent = "Verificando as tabelas...";
 
       try {
         await Excel.run(async (context) => {
@@ -189,12 +181,6 @@
 
           tables.load("items/name");
           await context.sync();
-
-          if (!tables.items.length) {
-            statusEl.textContent =
-              "Conexão funcionando. Não encontrei tabelas estruturadas nesta pasta de trabalho.";
-            return;
-          }
 
           const lines = [];
 
@@ -205,97 +191,153 @@
             await context.sync();
 
             lines.push(
-              "• " + table.name +
-              "\n  Colunas: " +
+              table.name +
+              "\nColunas: " +
               columns.items.map(c => c.name).join(", ")
             );
           }
 
           statusEl.textContent =
-            "Conexão funcionando. Tabelas identificadas:\n\n" +
-            lines.join("\n\n");
+            "Tabelas encontradas:\n\n" + lines.join("\n\n");
         });
 
       } catch (err) {
         statusEl.textContent =
-          "Não foi possível consultar o Excel: " +
-          (err && err.message ? err.message : String(err));
+          "Erro ao consultar o Excel: " +
+          (err.message || String(err));
 
       } finally {
         checkBtn.disabled = false;
       }
     });
 
-    // Envio da pergunta ao Gemini junto com os lançamentos do Excel
+    // Leitura das duas tabelas e envio ao Gemini
     sendBtn.addEventListener("click", async () => {
       const question = questionEl.value.trim();
 
       if (!question) {
-        answerEl.textContent =
-          "Digite uma pergunta antes de enviar.";
+        answerEl.textContent = "Digite uma pergunta.";
         return;
       }
 
       if (!excelReady) {
-        answerEl.textContent =
-          "O suplemento ainda não está conectado ao Excel.";
+        answerEl.textContent = "Excel não conectado.";
         return;
       }
 
       sendBtn.disabled = true;
       answerEl.textContent =
-        "Lendo os lançamentos do Excel...";
+        "Lendo os lançamentos e os saldos iniciais...";
 
       try {
         let dadosFinanceiros;
 
         await Excel.run(async (context) => {
-          const tabela = context.workbook.tables.getItem("tbLancamentos");
+          const tabelaLancamentos =
+            context.workbook.tables.getItem("tbLancamentos");
 
-          const cabecalhos = tabela.getHeaderRowRange();
-          const dados = tabela.getDataBodyRange();
+          const tabelaContas =
+            context.workbook.tables.getItem("tabela_contas");
 
-          cabecalhos.load("values");
-          dados.load("values");
+          const cabecalhosLancamentos =
+            tabelaLancamentos.getHeaderRowRange();
+
+          const dadosLancamentos =
+            tabelaLancamentos.getDataBodyRange();
+
+          const cabecalhosContas =
+            tabelaContas.getHeaderRowRange();
+
+          const dadosContas =
+            tabelaContas.getDataBodyRange();
+
+          cabecalhosLancamentos.load("values");
+          dadosLancamentos.load("values");
+
+          cabecalhosContas.load("values");
+          dadosContas.load("values");
 
           await context.sync();
 
           dadosFinanceiros = {
-            colunas: cabecalhos.values[0],
-            lancamentos: dados.values
+            tabelaLancamentos: {
+              colunas: cabecalhosLancamentos.values[0],
+              registros: dadosLancamentos.values
+            },
+
+            tabelaContas: {
+              colunas: cabecalhosContas.values[0],
+              registros: dadosContas.values
+            }
           };
         });
 
-        if (!dadosFinanceiros.lancamentos.length) {
+        if (!dadosFinanceiros.tabelaLancamentos.registros.length) {
           answerEl.textContent =
-            "A tabela tbLancamentos não possui lançamentos.";
+            "Não existem lançamentos cadastrados.";
+          return;
+        }
+
+        if (!dadosFinanceiros.tabelaContas.registros.length) {
+          answerEl.textContent =
+            "A tabela de contas não possui registros.";
           return;
         }
 
         answerEl.textContent =
-          "Enviando pergunta e lançamentos ao Gemini...";
+          "Preparando os dados para o Gemini...";
 
-        const promptCompleto =
-          "Você é o Assistente Financeiro do usuário. " +
-          "Analise os dados da tabela tbLancamentos fornecidos abaixo. " +
-          "Use exclusivamente os dados recebidos. " +
-          "Não invente valores, contas ou transações. " +
-          "Se alguma informação estiver ausente, informe isso. " +
-          "Considere os nomes das colunas para interpretar os dados.\n\n" +
+        const promptCompleto = `
+Você é o Assistente Financeiro do usuário.
 
-          "PERGUNTA DO USUÁRIO:\n" +
-          question +
+Responda usando exclusivamente os dados das duas tabelas
+fornecidas abaixo. Não invente valores ou movimentações.
 
-          "\n\nCOLUNAS DA TABELA:\n" +
-          JSON.stringify(dadosFinanceiros.colunas) +
+REGRAS FINANCEIRAS IMPORTANTES:
 
-          "\n\nLANÇAMENTOS DA PLANILHA:\n" +
-          JSON.stringify(dadosFinanceiros.lancamentos);
+1. A tabela tabela_contas contém os saldos iniciais
+de cada conta. Esses valores devem ser considerados
+como ponto de partida para calcular os saldos atuais.
+
+2. As receitas aumentam o saldo da Conta Destino.
+
+3. As despesas pagas por Pix, débito ou dinheiro
+reduzem o saldo da Conta Origem.
+
+4. Compras feitas no crédito NÃO reduzem imediatamente
+o saldo bancário da Conta Origem. Elas geram uma
+obrigação na fatura do cartão.
+
+5. O pagamento da fatura do cartão deverá reduzir
+o saldo da conta bancária utilizada no pagamento.
+Não desconte a mesma compra duas vezes.
+
+6. Não some o saldo inicial como se fosse receita.
+
+7. Não confunda movimentações bancárias com
+dívidas, faturas ou valores destinados a reservas.
+
+8. Quando houver informações insuficientes,
+explique o que está faltando.
+
+9. Ao calcular saldos, apresente separadamente
+cada conta e mostre as movimentações consideradas.
+
+PERGUNTA DO USUÁRIO:
+${question}
+
+DADOS DA TABELA tbLancamentos:
+${JSON.stringify(dadosFinanceiros.tabelaLancamentos)}
+
+DADOS DA TABELA tabela_contas:
+${JSON.stringify(dadosFinanceiros.tabelaContas)}
+`;
 
         if (promptCompleto.length > 6000) {
           throw new Error(
-            "Os dados da tabela ultrapassaram o limite de 6000 caracteres " +
-            "aceito atualmente pelo Worker. Vamos precisar limitar os dados enviados."
+            "Os dados ultrapassaram o limite de 6000 caracteres " +
+            "do Worker. Precisaremos selecionar somente os dados " +
+            "necessários para cada pergunta."
           );
         }
 
@@ -315,16 +357,18 @@
           throw new Error(
             result.details ||
             result.error ||
-            "Não foi possível consultar o Gemini."
+            "Erro na comunicação com o Gemini."
           );
         }
 
         answerEl.textContent =
-          result.answer || "O Gemini não retornou uma resposta.";
+          result.answer ||
+          "O Gemini não retornou uma resposta.";
 
       } catch (err) {
         answerEl.textContent =
-          "Não foi possível obter uma resposta.\n\nDetalhes: " +
+          "Não foi possível consultar o assistente.\n\n" +
+          "Detalhes: " +
           (err.message || String(err));
 
       } finally {
