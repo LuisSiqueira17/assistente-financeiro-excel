@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -94,6 +93,142 @@
       color: #666;
       line-height: 1.45;
     }
+
+    /* Formatação Markdown no painel do suplemento */
+    #answer .markdown-body {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    #answer .markdown-body > :first-child {
+      margin-top: 0;
+    }
+
+    #answer .markdown-body > :last-child {
+      margin-bottom: 0;
+    }
+
+    #answer .markdown-body p {
+      margin: .65em 0;
+    }
+
+    #answer .markdown-body h1,
+    #answer .markdown-body h2,
+    #answer .markdown-body h3,
+    #answer .markdown-body h4,
+    #answer .markdown-body h5,
+    #answer .markdown-body h6 {
+      color: #174a35;
+      line-height: 1.3;
+      margin: 1em 0 .45em;
+      overflow-wrap: anywhere;
+    }
+
+    #answer .markdown-body h1 {
+      font-size: 1.5em;
+    }
+
+    #answer .markdown-body h2 {
+      font-size: 1.3em;
+    }
+
+    #answer .markdown-body h3 {
+      font-size: 1.15em;
+    }
+
+    #answer .markdown-body h4,
+    #answer .markdown-body h5,
+    #answer .markdown-body h6 {
+      font-size: 1.05em;
+    }
+
+    #answer .markdown-body ul,
+    #answer .markdown-body ol {
+      margin: .55em 0;
+      padding-left: 1.7em;
+    }
+
+    #answer .markdown-body li {
+      margin: .25em 0;
+    }
+
+    #answer .markdown-body blockquote {
+      margin: .8em 0;
+      padding: .45em .9em;
+      color: #4f5d55;
+      background: #f4f7f5;
+      border-left: 4px solid #217346;
+    }
+
+    #answer .markdown-body blockquote > :first-child {
+      margin-top: 0;
+    }
+
+    #answer .markdown-body blockquote > :last-child {
+      margin-bottom: 0;
+    }
+
+    #answer .markdown-body hr {
+      border: 0;
+      border-top: 1px solid #dce5df;
+      margin: 1em 0;
+    }
+
+    #answer .markdown-body code {
+      padding: .12em .35em;
+      border-radius: 4px;
+      background: #f0f2f4;
+      color: #174a35;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+      overflow-wrap: anywhere;
+    }
+
+    #answer .markdown-body pre {
+      overflow: auto;
+      padding: 12px;
+      border-radius: 7px;
+      background: #f0f2f4;
+      color: #202124;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    #answer .markdown-body pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: .95em;
+      white-space: inherit;
+    }
+
+    #answer .markdown-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin: .8em 0;
+    }
+
+    #answer .markdown-body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95em;
+    }
+
+    #answer .markdown-body th,
+    #answer .markdown-body td {
+      border: 1px solid #dce5df;
+      padding: 7px 9px;
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    #answer .markdown-body th {
+      color: #174a35;
+      background: #f4f7f5;
+      font-weight: 700;
+    }
   </style>
 </head>
 
@@ -166,7 +301,6 @@
     let lastQuestion = "";
     let lastAnswer = "";
 
-
     // Converte datas seriais do Excel para dd/mm/aaaa.
     // A conversão é aplicada somente às colunas de data conhecidas.
     function formatExcelDate(value) {
@@ -221,7 +355,7 @@
       });
     }
 
-    // Escapa HTML e interpreta negrito Markdown com segurança.
+    // Escapa todo texto fornecido antes de inseri-lo no HTML.
     function escapeHtml(text) {
       return String(text).replace(/[&<>"']/g, (char) => {
         const entities = {
@@ -236,10 +370,321 @@
       });
     }
 
+    // Interpreta formatação em linha. O conteúdo de origem é sempre
+    // escapado; apenas as tags criadas pelo renderizador são inseridas.
+    function renderInlineMarkdown(text) {
+      const source = String(text);
+      const tokenPattern =
+        /(`+)([\s\S]*?)\1|(\*\*|__)(?=\S)([^\n]*?\S)\3|~~(?=\S)([^\n]*?\S)~~|(\*|_)(?=\S)([^\n]*?\S)\6/g;
+
+      let html = "";
+      let lastIndex = 0;
+      let match;
+
+      while ((match = tokenPattern.exec(source)) !== null) {
+        html += escapeHtml(source.slice(lastIndex, match.index));
+
+        if (match[1] !== undefined) {
+          html += "<code>" + escapeHtml(match[2]) + "</code>";
+        } else if (match[3] !== undefined) {
+          html += "<strong>" + renderInlineMarkdown(match[4]) + "</strong>";
+        } else if (match[5] !== undefined) {
+          html += "<del>" + renderInlineMarkdown(match[5]) + "</del>";
+        } else if (match[6] !== undefined) {
+          html += "<em>" + renderInlineMarkdown(match[7]) + "</em>";
+        }
+
+        lastIndex = tokenPattern.lastIndex;
+      }
+
+      html += escapeHtml(source.slice(lastIndex));
+      return html;
+    }
+
+    function splitMarkdownTableRow(line) {
+      let source = line.trim();
+
+      if (source.startsWith("|")) {
+        source = source.slice(1);
+      }
+
+      if (source.endsWith("|") && !source.endsWith("\\|")) {
+        source = source.slice(0, -1);
+      }
+
+      const cells = [];
+      let cell = "";
+      let escaped = false;
+
+      for (let index = 0; index < source.length; index++) {
+        const char = source[index];
+
+        if (escaped) {
+          cell += char;
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === "|") {
+          cells.push(cell.trim());
+          cell = "";
+        } else {
+          cell += char;
+        }
+      }
+
+      if (escaped) {
+        cell += "\\";
+      }
+
+      cells.push(cell.trim());
+      return cells;
+    }
+
+    function isMarkdownTableSeparator(line) {
+      const cells = splitMarkdownTableRow(line);
+      return cells.length > 0 &&
+        cells.every(cell => /^:?-{3,}:?$/.test(cell));
+    }
+
+    function isMarkdownTableStart(lines, index) {
+      return index + 1 < lines.length &&
+        lines[index].includes("|") &&
+        isMarkdownTableSeparator(lines[index + 1]);
+    }
+
+    function getMarkdownListMarker(line) {
+      const match = line.match(/^ {0,3}(?:(\d+)[.)]|([-+*]))\s+(.*)$/);
+
+      if (!match) {
+        return null;
+      }
+
+      return {
+        type: match[1] ? "ol" : "ul",
+        number: match[1] ? Number(match[1]) : null,
+        content: match[3]
+      };
+    }
+
+    function isMarkdownBlockStart(lines, index) {
+      const line = lines[index];
+
+      if (!line || !line.trim()) return true;
+      if (/^ {0,3}#{1,6}(?:\s+|$)/.test(line)) return true;
+      if (/^ {0,3}(?:[-*_]\s*){3,}$/.test(line)) return true;
+      if (/^ {0,3}(?:`{3,}|~{3,})/.test(line)) return true;
+      if (/^ {0,3}>\s?/.test(line)) return true;
+      if (getMarkdownListMarker(line)) return true;
+      if (isMarkdownTableStart(lines, index)) return true;
+
+      return false;
+    }
+
+    function renderMarkdownTable(lines, startIndex) {
+      const headers = splitMarkdownTableRow(lines[startIndex]);
+      const alignments = splitMarkdownTableRow(lines[startIndex + 1])
+        .map(cell => {
+          const left = cell.startsWith(":");
+          const right = cell.endsWith(":");
+
+          if (left && right) return "center";
+          if (right) return "right";
+          return "left";
+        });
+
+      let index = startIndex + 2;
+      const rows = [];
+
+      while (index < lines.length &&
+             lines[index].includes("|") &&
+             lines[index].trim()) {
+        rows.push(splitMarkdownTableRow(lines[index]));
+        index++;
+      }
+
+      const renderCell = (cell, cellIndex, tagName) => {
+        const alignment = alignments[cellIndex] || "left";
+        const content = renderInlineMarkdown(cell || "");
+        return `<${tagName} style="text-align:${alignment}">${content}</${tagName}>`;
+      };
+
+      let html = '<div class="markdown-table-wrap"><table><thead><tr>';
+
+      headers.forEach((header, cellIndex) => {
+        html += renderCell(header, cellIndex, "th");
+      });
+
+      html += "</tr></thead>";
+
+      if (rows.length) {
+        html += "<tbody>";
+
+        rows.forEach(row => {
+          html += "<tr>";
+
+          headers.forEach((_, cellIndex) => {
+            html += renderCell(row[cellIndex] || "", cellIndex, "td");
+          });
+
+          html += "</tr>";
+        });
+
+        html += "</tbody>";
+      }
+
+      html += "</table></div>";
+
+      return { html, nextIndex: index };
+    }
+
+    function renderMarkdownBlocks(text) {
+      const lines = String(text).replace(/\r\n?/g, "\n").split("\n");
+      const output = [];
+      let index = 0;
+
+      while (index < lines.length) {
+        const line = lines[index];
+
+        if (!line.trim()) {
+          index++;
+          continue;
+        }
+
+        // Blocos de código delimitados por três ou mais crases ou tils.
+        const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
+
+        if (fenceMatch) {
+          const fence = fenceMatch[1];
+          const fenceChar = fence[0];
+          const closingPattern = new RegExp(
+            "^ {0,3}" + fenceChar + "{" + fence.length + ",}\\\\s*$"
+          );
+          const codeLines = [];
+          index++;
+
+          while (index < lines.length &&
+                 !closingPattern.test(lines[index])) {
+            codeLines.push(lines[index]);
+            index++;
+          }
+
+          if (index < lines.length) {
+            index++;
+          }
+
+          output.push(
+            "<pre><code>" +
+            escapeHtml(codeLines.join("\n")) +
+            "</code></pre>"
+          );
+          continue;
+        }
+
+        // Títulos Markdown: # até ######.
+        const headingMatch = line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+
+        if (headingMatch) {
+          const level = headingMatch[1].length;
+          output.push(
+            `<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`
+          );
+          index++;
+          continue;
+        }
+
+        // Linha divisória.
+        if (/^ {0,3}(?:[-*_]\s*){3,}$/.test(line)) {
+          output.push("<hr>");
+          index++;
+          continue;
+        }
+
+        // Tabela Markdown.
+        if (isMarkdownTableStart(lines, index)) {
+          const table = renderMarkdownTable(lines, index);
+          output.push(table.html);
+          index = table.nextIndex;
+          continue;
+        }
+
+        // Citação; linhas consecutivas são agrupadas.
+        if (/^ {0,3}>\s?/.test(line)) {
+          const quoteLines = [];
+
+          while (index < lines.length &&
+                 /^ {0,3}>\s?/.test(lines[index])) {
+            quoteLines.push(
+              lines[index].replace(/^ {0,3}>\s?/, "")
+            );
+            index++;
+          }
+
+          output.push(
+            "<blockquote>" +
+            renderMarkdownBlocks(quoteLines.join("\n")) +
+            "</blockquote>"
+          );
+          continue;
+        }
+
+        // Listas ordenadas e listas com marcadores.
+        const firstMarker = getMarkdownListMarker(line);
+
+        if (firstMarker) {
+          const items = [];
+          const listType = firstMarker.type;
+          const startNumber = firstMarker.number;
+
+          while (index < lines.length) {
+            const marker = getMarkdownListMarker(lines[index]);
+
+            if (!marker || marker.type !== listType) {
+              break;
+            }
+
+            items.push(marker.content);
+            index++;
+          }
+
+          const startAttribute =
+            listType === "ol" && startNumber !== 1
+              ? ` start="${startNumber}"`
+              : "";
+
+          output.push(
+            `<${listType}${startAttribute}>` +
+            items.map(item => `<li>${renderInlineMarkdown(item)}</li>`).join("") +
+            `</${listType}>`
+          );
+          continue;
+        }
+
+        // Parágrafo: linhas consecutivas são preservadas como quebras de linha.
+        const paragraphLines = [line];
+        index++;
+
+        while (index < lines.length &&
+               lines[index].trim() &&
+               !isMarkdownBlockStart(lines, index)) {
+          paragraphLines.push(lines[index]);
+          index++;
+        }
+
+        output.push(
+          "<p>" +
+          paragraphLines.map(renderInlineMarkdown).join("<br>\n") +
+          "</p>"
+        );
+      }
+
+      return output.join("\n");
+    }
+
+    // Converte Markdown em HTML seguro para o painel e o relatório.
     function renderMarkdown(text) {
-      return escapeHtml(text)
-        .replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
-        .replace(/__(.+?)__/gs, "<strong>$1</strong>");
+      return '<div class="markdown-body">' +
+        renderMarkdownBlocks(text) +
+        "</div>";
     }
 
     // Inicialização do suplemento
@@ -385,6 +830,7 @@
           "Preparando os dados para o Gemini...";
 
         const promptCompleto = `
+
 Você é o Assistente Financeiro do usuário.
 
 Responda usando exclusivamente os dados das duas tabelas
@@ -604,6 +1050,144 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
       text-align: left;
     }
 
+    /* Formatação Markdown equivalente à do painel */
+    .answer .markdown-body {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .answer .markdown-body > :first-child {
+      margin-top: 0;
+    }
+
+    .answer .markdown-body > :last-child {
+      margin-bottom: 0;
+    }
+
+    .answer .markdown-body p {
+      margin: .7em 0;
+    }
+
+    .answer .markdown-body h1,
+    .answer .markdown-body h2,
+    .answer .markdown-body h3,
+    .answer .markdown-body h4,
+    .answer .markdown-body h5,
+    .answer .markdown-body h6 {
+      color: #174a35;
+      line-height: 1.3;
+      margin: 1em 0 .45em;
+      overflow-wrap: anywhere;
+      page-break-after: avoid;
+    }
+
+    .answer .markdown-body h1 {
+      font-size: 1.65em;
+    }
+
+    .answer .markdown-body h2 {
+      font-size: 1.4em;
+    }
+
+    .answer .markdown-body h3 {
+      font-size: 1.2em;
+    }
+
+    .answer .markdown-body h4,
+    .answer .markdown-body h5,
+    .answer .markdown-body h6 {
+      font-size: 1.05em;
+    }
+
+    .answer .markdown-body ul,
+    .answer .markdown-body ol {
+      margin: .6em 0;
+      padding-left: 1.8em;
+    }
+
+    .answer .markdown-body li {
+      margin: .25em 0;
+    }
+
+    .answer .markdown-body blockquote {
+      margin: .8em 0;
+      padding: .5em 1em;
+      color: #4f5d55;
+      background: #f4f7f5;
+      border-left: 4px solid #217346;
+    }
+
+    .answer .markdown-body blockquote > :first-child {
+      margin-top: 0;
+    }
+
+    .answer .markdown-body blockquote > :last-child {
+      margin-bottom: 0;
+    }
+
+    .answer .markdown-body hr {
+      border: 0;
+      border-top: 1px solid #dce5df;
+      margin: 1em 0;
+    }
+
+    .answer .markdown-body code {
+      padding: .12em .35em;
+      border-radius: 4px;
+      background: #f0f2f4;
+      color: #174a35;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+      overflow-wrap: anywhere;
+    }
+
+    .answer .markdown-body pre {
+      overflow: auto;
+      padding: 12px;
+      border-radius: 7px;
+      background: #f0f2f4;
+      color: #202124;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      page-break-inside: avoid;
+    }
+
+    .answer .markdown-body pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: .95em;
+      white-space: inherit;
+    }
+
+    .answer .markdown-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin: .8em 0;
+    }
+
+    .answer .markdown-body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95em;
+    }
+
+    .answer .markdown-body th,
+    .answer .markdown-body td {
+      border: 1px solid #dce5df;
+      padding: 7px 9px;
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    .answer .markdown-body th {
+      color: #174a35;
+      background: #f4f7f5;
+      font-weight: 700;
+    }
+
     .answer strong {
       color: #174a35;
       font-weight: 700;
@@ -646,6 +1230,19 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
 
       .section {
         page-break-inside: auto;
+      }
+
+      .markdown-table-wrap {
+        overflow: visible;
+      }
+
+      .answer .markdown-body table {
+        page-break-inside: auto;
+      }
+
+      .answer .markdown-body tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
       }
     }
   </style>
