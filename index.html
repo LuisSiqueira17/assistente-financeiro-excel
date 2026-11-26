@@ -21,7 +21,9 @@
       background: #f7f8fa;
     }
 
-    header { margin-bottom: 16px; }
+    header {
+      margin-bottom: 16px;
+    }
 
     h1 {
       font-size: 20px;
@@ -121,12 +123,12 @@
     <strong>Conversa com o Gemini</strong>
 
     <p class="note">
-      Digite sua pergunta e receba uma resposta da inteligência artificial.
+      Digite sua pergunta e receba uma resposta baseada nos lançamentos da planilha.
     </p>
 
     <textarea
       id="question"
-      placeholder="Ex.: Olá, Gemini! Como você pode me ajudar?"
+      placeholder="Ex.: Qual foi o total de receitas e despesas?"
       disabled
     ></textarea>
 
@@ -137,8 +139,10 @@
     <div id="answer" role="status" aria-live="polite"></div>
 
     <p class="note">
-      Nesta primeira versão, somente o texto da pergunta é enviado à IA.
-      Os dados financeiros da planilha não são enviados.
+      Ao enviar uma pergunta, os dados da tabela tbLancamentos
+      serão enviados ao Gemini para análise. As demais tabelas
+      da pasta de trabalho não serão enviadas.
+      Utilize somente dados fictícios durante os testes.
     </p>
   </section>
 
@@ -175,6 +179,7 @@
     // Verificação da conexão com o Excel
     checkBtn.addEventListener("click", async () => {
       checkBtn.disabled = true;
+
       statusEl.textContent =
         "Lendo apenas os nomes das tabelas e das colunas…";
 
@@ -221,12 +226,13 @@
       }
     });
 
-    // Envio da pergunta ao Gemini
+    // Envio da pergunta ao Gemini junto com os lançamentos do Excel
     sendBtn.addEventListener("click", async () => {
       const question = questionEl.value.trim();
 
       if (!question) {
-        answerEl.textContent = "Digite uma pergunta antes de enviar.";
+        answerEl.textContent =
+          "Digite uma pergunta antes de enviar.";
         return;
       }
 
@@ -237,16 +243,69 @@
       }
 
       sendBtn.disabled = true;
-      answerEl.textContent = "Consultando o Gemini. Aguarde…";
+      answerEl.textContent =
+        "Lendo os lançamentos do Excel...";
 
       try {
+        let dadosFinanceiros;
+
+        await Excel.run(async (context) => {
+          const tabela = context.workbook.tables.getItem("tbLancamentos");
+
+          const cabecalhos = tabela.getHeaderRowRange();
+          const dados = tabela.getDataBodyRange();
+
+          cabecalhos.load("values");
+          dados.load("values");
+
+          await context.sync();
+
+          dadosFinanceiros = {
+            colunas: cabecalhos.values[0],
+            lancamentos: dados.values
+          };
+        });
+
+        if (!dadosFinanceiros.lancamentos.length) {
+          answerEl.textContent =
+            "A tabela tbLancamentos não possui lançamentos.";
+          return;
+        }
+
+        answerEl.textContent =
+          "Enviando pergunta e lançamentos ao Gemini...";
+
+        const promptCompleto =
+          "Você é o Assistente Financeiro do usuário. " +
+          "Analise os dados da tabela tbLancamentos fornecidos abaixo. " +
+          "Use exclusivamente os dados recebidos. " +
+          "Não invente valores, contas ou transações. " +
+          "Se alguma informação estiver ausente, informe isso. " +
+          "Considere os nomes das colunas para interpretar os dados.\n\n" +
+
+          "PERGUNTA DO USUÁRIO:\n" +
+          question +
+
+          "\n\nCOLUNAS DA TABELA:\n" +
+          JSON.stringify(dadosFinanceiros.colunas) +
+
+          "\n\nLANÇAMENTOS DA PLANILHA:\n" +
+          JSON.stringify(dadosFinanceiros.lancamentos);
+
+        if (promptCompleto.length > 6000) {
+          throw new Error(
+            "Os dados da tabela ultrapassaram o limite de 6000 caracteres " +
+            "aceito atualmente pelo Worker. Vamos precisar limitar os dados enviados."
+          );
+        }
+
         const response = await fetch(API_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            question: question
+            question: promptCompleto
           })
         });
 
