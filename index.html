@@ -53,11 +53,17 @@
       color: white;
       font-weight: 600;
       cursor: pointer;
+      margin-top: 5px;
     }
 
     button:disabled {
       opacity: .55;
       cursor: default;
+    }
+
+    #printBtn {
+      background: #174a35;
+      margin-left: 5px;
     }
 
     textarea {
@@ -132,6 +138,10 @@
       Enviar pergunta
     </button>
 
+    <button id="printBtn" disabled>
+      🖨 Imprimir relatório
+    </button>
+
     <div id="answer" role="status" aria-live="polite"></div>
 
     <p class="note">
@@ -150,8 +160,11 @@
     const questionEl = document.getElementById("question");
     const sendBtn = document.getElementById("sendBtn");
     const answerEl = document.getElementById("answer");
+    const printBtn = document.getElementById("printBtn");
 
     let excelReady = false;
+    let lastQuestion = "";
+    let lastAnswer = "";
 
     // Inicialização do suplemento
     Office.onReady((info) => {
@@ -226,6 +239,11 @@
       }
 
       sendBtn.disabled = true;
+      printBtn.disabled = true;
+
+      lastQuestion = "";
+      lastAnswer = "";
+
       answerEl.textContent =
         "Lendo os lançamentos e os saldos iniciais...";
 
@@ -361,9 +379,18 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
           );
         }
 
-        answerEl.textContent =
-          result.answer ||
+        const resposta = result.answer ||
           "O Gemini não retornou uma resposta.";
+
+        answerEl.textContent = resposta;
+
+        // Guarda a pergunta e a resposta para o relatório
+        if (result.answer && result.answer.trim()) {
+          lastQuestion = question;
+          lastAnswer = result.answer.trim();
+
+          printBtn.disabled = false;
+        }
 
       } catch (err) {
         answerEl.textContent =
@@ -374,6 +401,238 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
       } finally {
         sendBtn.disabled = false;
       }
+    });
+
+    // Impressão do relatório profissional
+    printBtn.addEventListener("click", () => {
+      if (!lastQuestion || !lastAnswer) {
+        return;
+      }
+
+      const agora = new Date();
+
+      const dataHora = agora.toLocaleString("pt-BR", {
+        dateStyle: "long",
+        timeStyle: "short"
+      });
+
+      // Protege o conteúdo ao inserir texto no documento
+      function escapeHtml(text) {
+        return String(text).replace(/[&<>"']/g, (char) => {
+          const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+          };
+
+          return entities[char];
+        });
+      }
+
+      const perguntaSegura = escapeHtml(lastQuestion);
+      const respostaSegura = escapeHtml(lastAnswer);
+      const dataSegura = escapeHtml(dataHora);
+
+      const janelaRelatorio = window.open("", "_blank");
+
+      if (!janelaRelatorio) {
+        answerEl.textContent +=
+          "\n\nNão foi possível abrir o relatório. " +
+          "Verifique se o navegador está bloqueando janelas pop-up.";
+        return;
+      }
+
+      const documento = `
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Relatório Financeiro</title>
+
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: #252a27;
+      background: #fff;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+
+    .report {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #217346;
+      padding-bottom: 20px;
+      margin-bottom: 25px;
+    }
+
+    .brand {
+      color: #174a35;
+      font-size: 23px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+
+    .subtitle {
+      color: #64736b;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      margin-top: 7px;
+    }
+
+    .date {
+      color: #777;
+      font-size: 10px;
+      margin-top: 15px;
+    }
+
+    .section {
+      margin-bottom: 25px;
+      page-break-inside: avoid;
+    }
+
+    .section-title {
+      color: #174a35;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid #dce5df;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .question {
+      background: #f4f7f5;
+      border-left: 4px solid #217346;
+      padding: 14px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .answer {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      text-align: left;
+    }
+
+    .footer {
+      border-top: 1px solid #dce5df;
+      padding-top: 13px;
+      margin-top: 35px;
+      color: #777;
+      font-size: 9px;
+      text-align: center;
+    }
+
+    .print-actions {
+      text-align: center;
+      margin: 25px 0;
+    }
+
+    .print-actions button {
+      background: #217346;
+      border: 0;
+      border-radius: 7px;
+      color: white;
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    @media print {
+      .print-actions {
+        display: none;
+      }
+
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .section {
+        page-break-inside: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="report">
+
+    <header class="header">
+      <h1 class="brand">ASSISTENTE FINANCEIRO</h1>
+
+      <div class="subtitle">
+        RELATÓRIO DE ANÁLISE FINANCEIRA
+      </div>
+
+      <div class="date">
+        Gerado em ${dataSegura}
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-title">
+        1. Pergunta realizada
+      </div>
+
+      <div class="question">${perguntaSegura}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        2. Resultado da análise
+      </div>
+
+      <div class="answer">${respostaSegura}</div>
+    </section>
+
+    <footer class="footer">
+      ASSISTENTE FINANCEIRO<br>
+      Relatório gerado automaticamente a partir da consulta realizada.
+    </footer>
+
+    <div class="print-actions">
+      <button onclick="window.print()">
+        Imprimir ou salvar como PDF
+      </button>
+    </div>
+
+  </main>
+
+</body>
+</html>
+`;
+
+      janelaRelatorio.document.open();
+      janelaRelatorio.document.write(documento);
+      janelaRelatorio.document.close();
     });
   </script>
 </body>
