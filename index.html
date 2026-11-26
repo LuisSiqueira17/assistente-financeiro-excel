@@ -2,312 +2,276 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Assistente Financeiro</title>
-<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assistente Financeiro</title>
 
-<style>
-body{
-  font-family:Arial,sans-serif;
-  margin:0;
-  padding:20px;
-  color:#20312a;
-  background:#f7faf8
-}
+  <script src="https://officeapis.microsoft.com/lib/1/hosted/office.js"></script>
 
-h2{
-  color:#176b45;
-  margin-top:0
-}
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
 
-button{
-  background:#176b45;
-  color:white;
-  border:0;
-  border-radius:6px;
-  padding:10px 14px;
-  cursor:pointer;
-  margin:5px 0
-}
+    body {
+      margin: 0;
+      padding: 18px;
+      color: #202124;
+      background: #f7f8fa;
+    }
 
-#status{
-  margin-top:14px;
-  padding:10px;
-  background:#e8f3ed;
-  border-radius:6px;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  font-size:12px
-}
+    header { margin-bottom: 16px; }
 
-#question{
-  width:100%;
-  box-sizing:border-box;
-  padding:10px;
-  border:1px solid #b8c9bf;
-  border-radius:6px;
-  font-family:Arial;
-  font-size:14px;
-  resize:vertical
-}
+    h1 {
+      font-size: 20px;
+      margin: 0 0 5px;
+      color: #174a35;
+    }
 
-#answer{
-  margin-top:14px;
-  padding:12px;
-  background:#fff;
-  border:1px solid #dce7df;
-  border-radius:6px;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  min-height:50px
-}
+    .sub {
+      color: #5f6368;
+      font-size: 13px;
+      line-height: 1.45;
+    }
 
-small{
-  color:#52635a
-}
-</style>
+    .card {
+      background: white;
+      border: 1px solid #e0e4e8;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 13px;
+      background: #217346;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: default;
+    }
+
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 82px;
+      resize: vertical;
+      border: 1px solid #c9d1d9;
+      border-radius: 8px;
+      padding: 10px;
+      font: 14px "Segoe UI", Arial;
+    }
+
+    #status, #answer {
+      font-size: 13px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+      color: #333;
+    }
+
+    #answer {
+      margin-top: 12px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.45;
+    }
+
+    #sendBtn {
+      margin-top: 10px;
+    }
+  </style>
 </head>
 
 <body>
+  <header>
+    <h1>Assistente Financeiro</h1>
+    <div class="sub">
+      Seu painel de consultas para a pasta de trabalho.
+    </div>
+  </header>
 
-<h2>Assistente Financeiro</h2>
+  <section class="card">
+    <strong>Conexão com o Excel</strong>
 
-<p>Consulte e analise suas informações financeiras.</p>
+    <p class="note">
+      Verifique a conexão e identifique as tabelas e colunas da pasta de trabalho.
+    </p>
 
-<button id="check">Verificar conexão com o Excel</button>
-<button id="read">Ler amostra das tabelas</button>
-<button id="readFull">Ler tabelas completas</button>
-<button id="catalog">Catalogar todas as tabelas</button>
+    <button id="checkBtn" disabled>
+      Verificar conexão com o Excel
+    </button>
 
-<div id="status">Aguardando verificação.</div>
+    <div id="status" role="status" aria-live="polite" style="margin-top:12px">
+      Carregando o suplemento…
+    </div>
+  </section>
 
-<div style="margin-top:20px">
-  <h3>Converse com seu assistente</h3>
+  <section class="card">
+    <strong>Conversa com o Gemini</strong>
 
-  <textarea
-    id="question"
-    rows="4"
-    placeholder="Digite sua pergunta sobre suas finanças..."
-  ></textarea>
+    <p class="note">
+      Digite sua pergunta e receba uma resposta da inteligência artificial.
+    </p>
 
-  <button id="ask">Enviar pergunta</button>
-</div>
+    <textarea
+      id="question"
+      placeholder="Ex.: Olá, Gemini! Como você pode me ajudar?"
+      disabled
+    ></textarea>
 
-<div id="answer">
-A resposta aparecerá aqui.
-</div>
+    <button id="sendBtn" disabled>
+      Enviar pergunta
+    </button>
 
-<p>
-<small>
-A leitura é feita localmente no Excel. Nenhum dado financeiro é enviado para fora do arquivo.
-</small>
-</p>
+    <div id="answer" role="status" aria-live="polite"></div>
 
-<script>
+    <p class="note">
+      Nesta primeira versão, somente o texto da pergunta é enviado à IA.
+      Os dados financeiros da planilha não são enviados.
+    </p>
+  </section>
 
-Office.onReady(function(info){
-  document.getElementById("status").textContent =
-    info.host === Office.HostType.Excel
-    ? "Excel conectado. Você pode testar a leitura."
-    : "Abra este suplemento no Excel.";
-});
+  <script>
+    const API_URL =
+      "https://assistente-financeiro-api.luishenriquesiqueira81.workers.dev/";
 
-document.getElementById("check").addEventListener("click", async function(){
-  const status=document.getElementById("status");
+    const statusEl = document.getElementById("status");
+    const checkBtn = document.getElementById("checkBtn");
+    const questionEl = document.getElementById("question");
+    const sendBtn = document.getElementById("sendBtn");
+    const answerEl = document.getElementById("answer");
 
-  try{
-    await Excel.run(async function(context){
-      const tables=context.workbook.tables;
-      tables.load("items/name");
-      await context.sync();
+    let excelReady = false;
 
-      const details=[];
+    // Inicialização do suplemento
+    Office.onReady((info) => {
+      if (info.host === Office.HostType.Excel) {
+        excelReady = true;
 
-      for(const table of tables.items){
-        table.columns.load("items/name");
+        statusEl.textContent =
+          "Suplemento carregado no Excel. Você já pode verificar a conexão.";
+
+        checkBtn.disabled = false;
+        questionEl.disabled = false;
+        sendBtn.disabled = false;
+
+      } else {
+        statusEl.textContent =
+          "O painel abriu, mas não detectou o Excel como aplicativo hospedeiro.";
       }
-
-      await context.sync();
-
-      for(const table of tables.items){
-        details.push(
-          table.name+": "+
-          table.columns.items.map(c=>c.name).join(", ")
-        );
-      }
-
-      status.textContent="Conexão confirmada.\n\n"+details.join("\n");
     });
-  }catch(e){
-    status.textContent="Erro: "+e.message;
-  }
-});
 
-document.getElementById("read").addEventListener("click", async function(){
-  const status=document.getElementById("status");
-  status.textContent="Lendo amostra localmente...";
+    // Verificação da conexão com o Excel
+    checkBtn.addEventListener("click", async () => {
+      checkBtn.disabled = true;
+      statusEl.textContent =
+        "Lendo apenas os nomes das tabelas e das colunas…";
 
-  try{
-    await Excel.run(async function(context){
-      const names=["tbLancamentos","tabela_contas"];
-      const results=[];
+      try {
+        await Excel.run(async (context) => {
+          const tables = context.workbook.tables;
 
-      for(const name of names){
-        const table=context.workbook.tables.getItem(name);
-        table.columns.load("items/name");
-        table.rows.load("count");
-        await context.sync();
+          tables.load("items/name");
+          await context.sync();
 
-        const headers=table.columns.items.map(c=>c.name);
-        const totalRows=table.rows.count;
+          if (!tables.items.length) {
+            statusEl.textContent =
+              "Conexão funcionando. Não encontrei tabelas estruturadas nesta pasta de trabalho.";
+            return;
+          }
 
-        results.push("\n=== "+name+" ===");
-        results.push("Total de linhas: "+totalRows);
+          const lines = [];
 
-        if(totalRows===0){
-          results.push("Tabela sem registros.");
-          continue;
-        }
+          for (const table of tables.items) {
+            const columns = table.columns;
 
-        const body=table.getDataBodyRange();
-        const sampleRows=Math.min(3,totalRows);
-        const sample=body.getCell(0,0).getResizedRange(
-          sampleRows-1,
-          headers.length-1
-        );
+            columns.load("items/name");
+            await context.sync();
 
-        sample.load("values");
-        await context.sync();
+            lines.push(
+              "• " + table.name +
+              "\n  Colunas: " +
+              columns.items.map(c => c.name).join(", ")
+            );
+          }
 
-        results.push("Amostra das primeiras "+sampleRows+" linhas:");
-        results.push(headers.join(" | "));
+          statusEl.textContent =
+            "Conexão funcionando. Tabelas identificadas:\n\n" +
+            lines.join("\n\n");
+        });
 
-        for(const row of sample.values){
-          results.push(row.map(value=>
-            value===null || value===undefined ? "" : String(value)
-          ).join(" | "));
-        }
+      } catch (err) {
+        statusEl.textContent =
+          "Não foi possível consultar o Excel: " +
+          (err && err.message ? err.message : String(err));
+
+      } finally {
+        checkBtn.disabled = false;
+      }
+    });
+
+    // Envio da pergunta ao Gemini
+    sendBtn.addEventListener("click", async () => {
+      const question = questionEl.value.trim();
+
+      if (!question) {
+        answerEl.textContent = "Digite uma pergunta antes de enviar.";
+        return;
       }
 
-      status.textContent=results.join("\n");
-    });
-  }catch(e){
-    status.textContent="Não foi possível ler os dados: "+e.message;
-  }
-});
+      if (!excelReady) {
+        answerEl.textContent =
+          "O suplemento ainda não está conectado ao Excel.";
+        return;
+      }
 
-document.getElementById("readFull").addEventListener("click", async function(){
-  const status=document.getElementById("status");
-  status.textContent="Lendo todas as linhas das tabelas...";
+      sendBtn.disabled = true;
+      answerEl.textContent = "Consultando o Gemini. Aguarde…";
 
-  try{
-    await Excel.run(async function(context){
-      const names=["tbLancamentos","tabela_contas"];
-      const results=[];
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question: question
+          })
+        });
 
-      for(const name of names){
-        const table=context.workbook.tables.getItem(name);
+        const result = await response.json();
 
-        table.columns.load("items/name");
-        table.rows.load("count");
-        await context.sync();
-
-        const headers=table.columns.items.map(c=>c.name);
-        const totalRows=table.rows.count;
-
-        results.push("\n=== "+name+" ===");
-        results.push("Total de linhas: "+totalRows);
-        results.push(headers.join(" | "));
-
-        if(totalRows===0){
-          results.push("Tabela sem registros.");
-          continue;
-        }
-
-        const body=table.getDataBodyRange();
-        const fullRange=body.getCell(0,0).getResizedRange(
-          totalRows-1,
-          headers.length-1
-        );
-
-        fullRange.load("values");
-        await context.sync();
-
-        results.push("Registros completos:");
-
-        for(let i=0;i<fullRange.values.length;i++){
-          const row=fullRange.values[i];
-
-          results.push(
-            (i+1)+": "+
-            row.map(value=>
-              value===null || value===undefined ? "" : String(value)
-            ).join(" | ")
+        if (!response.ok) {
+          throw new Error(
+            result.details ||
+            result.error ||
+            "Não foi possível consultar o Gemini."
           );
         }
-      }
 
-      status.textContent=results.join("\n");
+        answerEl.textContent =
+          result.answer || "O Gemini não retornou uma resposta.";
+
+      } catch (err) {
+        answerEl.textContent =
+          "Não foi possível obter uma resposta.\n\nDetalhes: " +
+          (err.message || String(err));
+
+      } finally {
+        sendBtn.disabled = false;
+      }
     });
-  }catch(e){
-    status.textContent="Não foi possível ler as tabelas completas: "+e.message;
-  }
-});
-
-document.getElementById("catalog").addEventListener("click", async function(){
-  const status=document.getElementById("status");
-  status.textContent="Catalogando todas as tabelas do arquivo...";
-
-  try{
-    await Excel.run(async function(context){
-      const tables=context.workbook.tables;
-      tables.load("items/name");
-      await context.sync();
-
-      for(const table of tables.items){
-        table.columns.load("items/name");
-        table.rows.load("count");
-      }
-
-      await context.sync();
-
-      const results=[];
-      results.push("CATÁLOGO DO ARQUIVO");
-      results.push("Total de tabelas: "+tables.items.length);
-
-      for(const table of tables.items){
-        results.push("\n=== "+table.name+" ===");
-        results.push("Registros: "+table.rows.count);
-        results.push(
-          "Colunas: "+
-          table.columns.items.map(c=>c.name).join(" | ")
-        );
-      }
-
-      status.textContent=results.join("\n");
-    });
-  }catch(e){
-    status.textContent="Erro ao catalogar tabelas: "+e.message;
-  }
-});
-
-document.getElementById("ask").addEventListener("click", function(){
-  const question=document.getElementById("question").value.trim();
-  const answer=document.getElementById("answer");
-
-  if(!question){
-    answer.textContent="Digite uma pergunta antes de enviar.";
-    return;
-  }
-
-  answer.textContent=
-    "Pergunta recebida:\n\n"+
-    question+
-    "\n\nA conexão com a inteligência artificial será implementada na próxima etapa.";
-});
-
-</script>
-
+  </script>
 </body>
 </html>
