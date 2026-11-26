@@ -1,12 +1,11 @@
-
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
+<!DOCTYPE html>
+<!-- saved from url=(0110)file:///C:/Users/Luis/Documents/Codex/2026-11-26/referenced-chatgpt-conversation-this-is-an/outputs/index.html -->
+<html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Assistente Financeiro</title>
 
-  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script src="./Assistente Financeiro_files/office.js.baixados"></script><script type="text/javascript" id="O15Mapping" crossorigin="anonymous" src="./Assistente Financeiro_files/o15apptofilemappingtable.js.baixados"></script>
 
   <style>
     :root {
@@ -87,6 +86,111 @@
 
     #answer {
       margin-top: 12px;
+      white-space: normal;
+      line-height: 1.6;
+    }
+
+    #answer > :first-child {
+      margin-top: 0;
+    }
+
+    #answer > :last-child {
+      margin-bottom: 0;
+    }
+
+    #answer h1, #answer h2, #answer h3 {
+      color: #174a35;
+      line-height: 1.3;
+      margin: 18px 0 9px;
+    }
+
+    #answer h1 { font-size: 19px; }
+    #answer h2 { font-size: 16px; }
+    #answer h3 { font-size: 14px; }
+
+    #answer p {
+      margin: 0 0 12px;
+    }
+
+    #answer ul, #answer ol {
+      margin: 6px 0 14px;
+      padding-left: 24px;
+    }
+
+    #answer li + li {
+      margin-top: 4px;
+    }
+
+    #answer blockquote {
+      margin: 12px 0;
+      padding: 8px 12px;
+      border-left: 3px solid #217346;
+      border-radius: 4px;
+      background: #f1f6f3;
+      color: #4c5b53;
+    }
+
+    #answer blockquote > :last-child {
+      margin-bottom: 0;
+    }
+
+    #answer hr {
+      border: 0;
+      border-top: 1px solid #dce5df;
+      margin: 16px 0;
+    }
+
+    #answer .md-table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 12px 0 16px;
+    }
+
+    #answer table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    #answer th, #answer td {
+      border: 1px solid #dce5df;
+      padding: 7px 8px;
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    #answer th {
+      background: #f1f6f3;
+      color: #174a35;
+    }
+
+    #answer pre {
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 10px 0 14px;
+      padding: 11px;
+      border-radius: 7px;
+      background: #f1f3f4;
+      white-space: pre;
+    }
+
+    #answer code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #eef1ef;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+    }
+
+    #answer pre code {
+      padding: 0;
+      background: transparent;
+      font-size: 12px;
+    }
+
+    #answer del {
+      color: #68716b;
     }
 
     .note {
@@ -95,7 +199,7 @@
       line-height: 1.45;
     }
   </style>
-</head>
+<iframe style="display:none" src="./Assistente Financeiro_files/telemetryproxy.html"></iframe></head>
 
 <body>
   <header>
@@ -112,13 +216,11 @@
       Verifique a conexão e identifique as tabelas e colunas.
     </p>
 
-    <button id="checkBtn" disabled>
+    <button id="checkBtn" disabled="">
       Verificar conexão com o Excel
     </button>
 
-    <div id="status" role="status" aria-live="polite" style="margin-top:12px">
-      Carregando o suplemento…
-    </div>
+    <div id="status" role="status" aria-live="polite" style="margin-top:12px">O suplemento não detectou o Excel.</div>
   </section>
 
   <section class="card">
@@ -128,17 +230,13 @@
       Faça perguntas sobre suas contas e movimentações financeiras.
     </p>
 
-    <textarea
-      id="question"
-      placeholder="Ex.: Qual é o saldo atual de cada conta?"
-      disabled
-    ></textarea>
+    <textarea id="question" placeholder="Ex.: Qual é o saldo atual de cada conta?" disabled=""></textarea>
 
-    <button id="sendBtn" disabled>
+    <button id="sendBtn" disabled="">
       Enviar pergunta
     </button>
 
-    <button id="printBtn" disabled>
+    <button id="printBtn" disabled="">
       🖨 Imprimir relatório
     </button>
 
@@ -221,7 +319,7 @@
       });
     }
 
-    // Escapa HTML e interpreta negrito Markdown com segurança.
+    // Escapa HTML e converte somente Markdown permitido, sem aceitar HTML bruto.
     function escapeHtml(text) {
       return String(text).replace(/[&<>"']/g, (char) => {
         const entities = {
@@ -236,10 +334,284 @@
       });
     }
 
+    function escapeMarkdownText(text) {
+      const unescaped = String(text).replace(/\\([\\`*_{}\[\]()#+\-.!|>~])/g, "$1");
+      return escapeHtml(unescaped).replace(/\r\n?|\n/g, "<br>\n");
+    }
+
+    function isMarkdownWordChar(char) {
+      return Boolean(char && /[A-Za-z0-9À-ÖØ-öø-ÿ_]/.test(char));
+    }
+
+    function renderInlineMarkdown(text) {
+      const source = String(text);
+      const pattern = /(`+)([\s\S]*?)\1|(\*\*|__)(?=\S)([\s\S]*?\S)\3|~~(?=\S)([\s\S]*?\S)~~|\*([^\s*](?:[\s\S]*?[^\s*])?)\*|_([^\s_](?:[\s\S]*?[^\s_])?)_/g;
+      let html = "";
+      let cursor = 0;
+      let match;
+
+      while ((match = pattern.exec(source)) !== null) {
+        html += escapeMarkdownText(source.slice(cursor, match.index));
+
+        if (match[1]) {
+          html += "<code>" + escapeHtml(match[2].replace(/\r\n?|\n/g, " ")) + "</code>";
+        } else if (match[3]) {
+          if (match[3] === "__" &&
+              (isMarkdownWordChar(source[match.index - 1]) ||
+               isMarkdownWordChar(source[pattern.lastIndex]))) {
+            html += escapeMarkdownText(match[0]);
+          } else {
+            html += "<strong>" + renderInlineMarkdown(match[4]) + "</strong>";
+          }
+        } else if (match[5] !== undefined) {
+          html += "<del>" + renderInlineMarkdown(match[5]) + "</del>";
+        } else if (match[6] !== undefined) {
+          html += "<em>" + renderInlineMarkdown(match[6]) + "</em>";
+        } else {
+          const before = source[match.index - 1];
+          const after = source[pattern.lastIndex];
+
+          if (isMarkdownWordChar(before) || isMarkdownWordChar(after)) {
+            html += escapeMarkdownText(match[0]);
+          } else {
+            html += "<em>" + renderInlineMarkdown(match[7]) + "</em>";
+          }
+        }
+
+        cursor = pattern.lastIndex;
+      }
+
+      html += escapeMarkdownText(source.slice(cursor));
+      return html;
+    }
+
+    function splitMarkdownTableRow(line) {
+      let value = line.trim();
+
+      if (value.startsWith("|")) value = value.slice(1);
+
+      if (value.endsWith("|")) {
+        let backslashes = 0;
+        for (let index = value.length - 2; index >= 0 && value[index] === "\\"; index--) {
+          backslashes++;
+        }
+        if (backslashes % 2 === 0) value = value.slice(0, -1);
+      }
+
+      const cells = [];
+      let cell = "";
+      let escaped = false;
+
+      for (const char of value) {
+        if (char === "|" && !escaped) {
+          cells.push(cell.trim());
+          cell = "";
+        } else {
+          cell += char;
+        }
+
+        if (char === "\\" && !escaped) {
+          escaped = true;
+        } else {
+          escaped = false;
+        }
+      }
+
+      cells.push(cell.trim());
+      return cells;
+    }
+
+    function getMarkdownListInfo(line) {
+      const match = line.match(/^ {0,3}(?:([-*+])[ \t]+|(\d+)[.)][ \t]+)(.*)$/);
+      if (!match) return null;
+
+      return {
+        type: match[2] ? "ol" : "ul",
+        start: match[2] ? Number(match[2]) : 1,
+        text: match[3]
+      };
+    }
+
+    function isMarkdownHeading(line) {
+      return /^ {0,3}#{1,3}(?:[ \t]+|$)/.test(line);
+    }
+
+    function isMarkdownRule(line) {
+      return /^ {0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/.test(line);
+    }
+
+    function isMarkdownTableStart(lines, index) {
+      if (index + 1 >= lines.length || !lines[index].includes("|")) return false;
+
+      const separators = splitMarkdownTableRow(lines[index + 1]);
+      return separators.length > 1 &&
+        separators.every(cell => /^:?-{3,}:?$/.test(cell));
+    }
+
+    function isMarkdownBlockStart(lines, index) {
+      const line = lines[index];
+      return /^ {0,3}(?:`{3,}|~{3,})/.test(line) ||
+        isMarkdownHeading(line) ||
+        isMarkdownRule(line) ||
+        /^ {0,3}>/.test(line) ||
+        Boolean(getMarkdownListInfo(line)) ||
+        isMarkdownTableStart(lines, index);
+    }
+
+    function renderMarkdownBlocks(lines) {
+      const blocks = [];
+      let index = 0;
+
+      while (index < lines.length) {
+        const line = lines[index];
+
+        if (!line.trim()) {
+          index++;
+          continue;
+        }
+
+        const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+        if (fenceMatch) {
+          const fence = fenceMatch[1];
+          const fenceChar = fence[0];
+          const fenceLength = fence.length;
+          const closingFence = new RegExp("^ {0,3}" + fenceChar + "{" + fenceLength + ",}[ \\t]*$");
+          const codeLines = [];
+          index++;
+
+          while (index < lines.length && !closingFence.test(lines[index])) {
+            codeLines.push(lines[index]);
+            index++;
+          }
+
+          if (index < lines.length) index++;
+
+          blocks.push("<pre><code>" + escapeHtml(codeLines.join("\n")) + "</code></pre>");
+          continue;
+        }
+
+        const headingMatch = line.match(/^ {0,3}(#{1,3})(?:[ \t]+|$)(.*?)\s*#*\s*$/);
+        if (headingMatch) {
+          const level = headingMatch[1].length;
+          blocks.push("<h" + level + ">" + renderInlineMarkdown(headingMatch[2]) + "</h" + level + ">");
+          index++;
+          continue;
+        }
+
+        if (isMarkdownRule(line)) {
+          blocks.push("<hr>");
+          index++;
+          continue;
+        }
+
+        if (/^ {0,3}>/.test(line)) {
+          const quoteLines = [];
+
+          while (index < lines.length && /^ {0,3}>/.test(lines[index])) {
+            quoteLines.push(lines[index].replace(/^ {0,3}>[ \t]?/, ""));
+            index++;
+          }
+
+          blocks.push("<blockquote>" + renderMarkdownBlocks(quoteLines) + "</blockquote>");
+          continue;
+        }
+
+        if (isMarkdownTableStart(lines, index)) {
+          const headerCells = splitMarkdownTableRow(lines[index]);
+          const separators = splitMarkdownTableRow(lines[index + 1]);
+          const alignments = separators.map(cell => {
+            const left = cell.startsWith(":");
+            const right = cell.endsWith(":");
+            return left && right ? "center" : right ? "right" : "left";
+          });
+          const rows = [];
+          index += 2;
+
+          while (index < lines.length && lines[index].trim() && lines[index].includes("|")) {
+            rows.push(splitMarkdownTableRow(lines[index]));
+            index++;
+          }
+
+          const header = headerCells.map((cell, cellIndex) =>
+            "<th style=\"text-align:" + (alignments[cellIndex] || "left") + "\">" +
+            renderInlineMarkdown(cell) + "</th>"
+          ).join("");
+          const body = rows.map(row => {
+            const cells = headerCells.map((_, cellIndex) =>
+              "<td style=\"text-align:" + (alignments[cellIndex] || "left") + "\">" +
+              renderInlineMarkdown(row[cellIndex] || "") + "</td>"
+            ).join("");
+            return "<tr>" + cells + "</tr>";
+          }).join("");
+
+          blocks.push("<div class=\"md-table-wrap\"><table><thead><tr>" + header +
+            "</tr></thead><tbody>" + body + "</tbody></table></div>");
+          continue;
+        }
+
+        const listInfo = getMarkdownListInfo(line);
+        if (listInfo) {
+          const listType = listInfo.type;
+          const start = listInfo.start;
+          const items = [];
+
+          while (index < lines.length) {
+            const currentInfo = getMarkdownListInfo(lines[index]);
+
+            if (currentInfo) {
+              if (currentInfo.type !== listType) break;
+              items.push([currentInfo.text]);
+              index++;
+              continue;
+            }
+
+            if (!lines[index].trim()) {
+              let nextIndex = index + 1;
+              while (nextIndex < lines.length && !lines[nextIndex].trim()) nextIndex++;
+              const nextInfo = nextIndex < lines.length ? getMarkdownListInfo(lines[nextIndex]) : null;
+
+              if (nextInfo && nextInfo.type === listType) {
+                index = nextIndex;
+                continue;
+              }
+              break;
+            }
+
+            if (/^(?: {2,}|\t+)/.test(lines[index]) && items.length) {
+              items[items.length - 1].push(lines[index].replace(/^(?: {2,}|\t+)/, ""));
+              index++;
+              continue;
+            }
+
+            break;
+          }
+
+          const itemHtml = items.map(item =>
+            "<li>" + renderInlineMarkdown(item.join("\n")) + "</li>"
+          ).join("");
+          const startAttribute = listType === "ol" && start !== 1 ? " start=\"" + start + "\"" : "";
+          blocks.push("<" + listType + startAttribute + ">" + itemHtml + "</" + listType + ">");
+          continue;
+        }
+
+        const paragraphLines = [line.trimEnd()];
+        index++;
+
+        while (index < lines.length && lines[index].trim() &&
+               !isMarkdownBlockStart(lines, index)) {
+          paragraphLines.push(lines[index].trimEnd());
+          index++;
+        }
+
+        blocks.push("<p>" + renderInlineMarkdown(paragraphLines.join("\n")) + "</p>");
+      }
+
+      return blocks.join("\n");
+    }
+
     function renderMarkdown(text) {
-      return escapeHtml(text)
-        .replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
-        .replace(/__(.+?)__/gs, "<strong>$1</strong>");
+      const normalized = String(text == null ? "" : text).replace(/\r\n?/g, "\n");
+      return renderMarkdownBlocks(normalized.split("\n"));
     }
 
     // Inicialização do suplemento
@@ -599,14 +971,119 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
     }
 
     .answer {
-      white-space: pre-wrap;
+      white-space: normal;
       overflow-wrap: anywhere;
       text-align: left;
+      line-height: 1.6;
     }
 
     .answer strong {
       color: #174a35;
       font-weight: 700;
+    }
+
+    .answer > :first-child {
+      margin-top: 0;
+    }
+
+    .answer > :last-child {
+      margin-bottom: 0;
+    }
+
+    .answer h1, .answer h2, .answer h3 {
+      color: #174a35;
+      line-height: 1.3;
+      margin: 18px 0 9px;
+      page-break-after: avoid;
+    }
+
+    .answer h1 { font-size: 18pt; }
+    .answer h2 { font-size: 15pt; }
+    .answer h3 { font-size: 12pt; }
+
+    .answer p {
+      margin: 0 0 12px;
+    }
+
+    .answer ul, .answer ol {
+      margin: 6px 0 14px;
+      padding-left: 24px;
+    }
+
+    .answer li + li {
+      margin-top: 4px;
+    }
+
+    .answer blockquote {
+      margin: 12px 0;
+      padding: 8px 12px;
+      border-left: 3px solid #217346;
+      background: #f4f7f5;
+      color: #4c5b53;
+    }
+
+    .answer blockquote > :last-child {
+      margin-bottom: 0;
+    }
+
+    .answer hr {
+      border: 0;
+      border-top: 1px solid #dce5df;
+      margin: 16px 0;
+    }
+
+    .answer .md-table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 12px 0 16px;
+    }
+
+    .answer table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10pt;
+    }
+
+    .answer th, .answer td {
+      border: 1px solid #dce5df;
+      padding: 7px 8px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    .answer th {
+      background: #f1f6f3;
+      color: #174a35;
+    }
+
+    .answer pre {
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 10px 0 14px;
+      padding: 11px;
+      border-radius: 5px;
+      background: #f1f3f4;
+      white-space: pre;
+      page-break-inside: avoid;
+    }
+
+    .answer code {
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: #eef1ef;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+    }
+
+    .answer pre code {
+      padding: 0;
+      background: transparent;
+      font-size: 9pt;
+    }
+
+    .answer del {
+      color: #68716b;
     }
 
     .footer {
@@ -705,5 +1182,6 @@ ${JSON.stringify(dadosFinanceiros.tabelaContas)}
       janelaRelatorio.document.close();
     });
   </script>
-</body>
-</html>
+
+
+</body></html>
